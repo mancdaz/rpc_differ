@@ -18,6 +18,7 @@ import json
 import logging
 import os
 import re
+import subprocess
 import sys
 
 
@@ -143,19 +144,29 @@ def get_osa_commit(repo, ref):
     except IndexError:
         # This branch doesn't use a submodule for OSA
         # Pull the SHA out of functions.sh
-        quoted_re = re.compile('OSA_RELEASE:-?"?([^"}]+)["}]')
         functions_path = \
             "{}/scripts/functions.sh".format(repo.working_tree_dir)
-        with open(functions_path, "r") as funcs:
-            for line in funcs.readlines():
-                match = quoted_re.search(line)
-                if match:
-                    osa_commit = match.groups()[0]
-                    break
-            else:
-                raise SHANotFound(
-                    "Cannot find OSA SHA in submodule or script: {}".format(
-                        functions_path))
+        try:
+            command = ['bash', '-c', 'source %s && env' % functions_path]
+            proc = subprocess.Popen(command, stdout = subprocess.PIPE)
+            blah
+            for line in proc.stdout:
+                  (key, _, value) = line.partition("=")
+                  os.environ[key] = value
+            osa_commit = os.environ.get('OSA_RELEASE').rstrip()
+        except:
+            print('last chance')
+            quoted_re = re.compile('OSA_RELEASE:-?"?([^"}]+)["}]')
+            with open(functions_path, "r") as funcs:
+                for line in funcs.readlines():
+                    match = quoted_re.search(line)
+                    if match:
+                        osa_commit = match.groups()[0]
+                        break
+                else:
+                    raise SHANotFound(
+                        "Cannot find OSA SHA in submodule or script: {}".format(
+                            functions_path))
     return osa_commit
 
 
